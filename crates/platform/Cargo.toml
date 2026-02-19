@@ -1,0 +1,8 @@
+[package]
+name = "opennotch-platform"
+version = "0.1.0"
+edition = "2021"
+description = "macOS-safe helpers: paths, file ops, bookmarks"
+license = "Apache-2.0"
+
+[dependencies]

@@ -1,0 +1,2 @@
+# UniFFI-generated Swift bindings go here
+# Run: uniffi-bindgen generate --library ../../../target/release/libnookdock_ffi.dylib --language swift --out-dir .

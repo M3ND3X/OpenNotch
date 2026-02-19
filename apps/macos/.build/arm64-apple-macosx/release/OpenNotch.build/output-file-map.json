@@ -1,0 +1,79 @@
+{
+  "": {
+    "dependencies": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/OpenNotch.d",
+    "object": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/OpenNotch.o",
+    "swift-dependencies": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/master.swiftdeps"
+  },
+  "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/Sources/Generated/opennotch_ffi.swift": {
+    "object": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/opennotch_ffi.swift.o",
+    "swiftmodule": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/opennotch_ffi~partial.swiftmodule",
+    "swift-dependencies": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/opennotch_ffi.swiftdeps",
+    "diagnostics": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/opennotch_ffi.dia"
+  },
+  "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/Sources/OpenNotch/OpenNotchApp.swift": {
+    "object": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/OpenNotchApp.swift.o",
+    "swiftmodule": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/OpenNotchApp~partial.swiftmodule",
+    "swift-dependencies": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/OpenNotchApp.swiftdeps",
+    "diagnostics": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/OpenNotchApp.dia"
+  },
+  "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/Sources/OpenNotch/Overlay/OverlayWindowManager.swift": {
+    "object": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/OverlayWindowManager.swift.o",
+    "swiftmodule": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/OverlayWindowManager~partial.swiftmodule",
+    "swift-dependencies": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/OverlayWindowManager.swiftdeps",
+    "diagnostics": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/OverlayWindowManager.dia"
+  },
+  "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/Sources/OpenNotch/Platform/CalendarProvider.swift": {
+    "object": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/CalendarProvider.swift.o",
+    "swiftmodule": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/CalendarProvider~partial.swiftmodule",
+    "swift-dependencies": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/CalendarProvider.swiftdeps",
+    "diagnostics": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/CalendarProvider.dia"
+  },
+  "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/Sources/OpenNotch/Platform/CameraProvider.swift": {
+    "object": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/CameraProvider.swift.o",
+    "swiftmodule": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/CameraProvider~partial.swiftmodule",
+    "swift-dependencies": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/CameraProvider.swiftdeps",
+    "diagnostics": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/CameraProvider.dia"
+  },
+  "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/Sources/OpenNotch/Platform/MediaProvider.swift": {
+    "object": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/MediaProvider.swift.o",
+    "swiftmodule": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/MediaProvider~partial.swiftmodule",
+    "swift-dependencies": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/MediaProvider.swiftdeps",
+    "diagnostics": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/MediaProvider.dia"
+  },
+  "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/Sources/OpenNotch/Platform/QuickLookHelper.swift": {
+    "object": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/QuickLookHelper.swift.o",
+    "swiftmodule": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/QuickLookHelper~partial.swiftmodule",
+    "swift-dependencies": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/QuickLookHelper.swiftdeps",
+    "diagnostics": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/QuickLookHelper.dia"
+  },
+  "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/Sources/OpenNotch/Platform/ShortcutsProvider.swift": {
+    "object": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/ShortcutsProvider.swift.o",
+    "swiftmodule": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/ShortcutsProvider~partial.swiftmodule",
+    "swift-dependencies": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/ShortcutsProvider.swiftdeps",
+    "diagnostics": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/ShortcutsProvider.dia"
+  },
+  "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/Sources/OpenNotch/Platform/VolumeProvider.swift": {
+    "object": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/VolumeProvider.swift.o",
+    "swiftmodule": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/VolumeProvider~partial.swiftmodule",
+    "swift-dependencies": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/VolumeProvider.swiftdeps",
+    "diagnostics": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/VolumeProvider.dia"
+  },
+  "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/Sources/OpenNotch/Views/NookView.swift": {
+    "object": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/NookView.swift.o",
+    "swiftmodule": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/NookView~partial.swiftmodule",
+    "swift-dependencies": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/NookView.swiftdeps",
+    "diagnostics": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/NookView.dia"
+  },
+  "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/Sources/OpenNotch/Views/PreferencesView.swift": {
+    "object": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/PreferencesView.swift.o",
+    "swiftmodule": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/PreferencesView~partial.swiftmodule",
+    "swift-dependencies": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/PreferencesView.swiftdeps",
+    "diagnostics": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/PreferencesView.dia"
+  },
+  "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/Sources/OpenNotch/Views/TrayView.swift": {
+    "object": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/TrayView.swift.o",
+    "swiftmodule": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/TrayView~partial.swiftmodule",
+    "swift-dependencies": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/TrayView.swiftdeps",
+    "diagnostics": "/Users/m1pro/Desktop/Alet/OpenNotch/apps/macos/.build/arm64-apple-macosx/release/OpenNotch.build/TrayView.dia"
+  }
+}

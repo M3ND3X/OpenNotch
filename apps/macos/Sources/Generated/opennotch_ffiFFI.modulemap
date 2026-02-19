@@ -1,0 +1,4 @@
+module opennotch_ffiFFI {
+    header "opennotch_ffiFFI.h"
+    export *
+}

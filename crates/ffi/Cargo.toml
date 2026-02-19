@@ -1,0 +1,13 @@
+[package]
+name = "opennotch-ffi"
+version = "0.1.0"
+edition = "2021"
+description = "UniFFI bridge for OpenNotch"
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+opennotch-core = { path = "../core" }
+uniffi = { version = "0.28", features = ["cli"] }

@@ -1,0 +1,16 @@
+[package]
+name = "opennotch-core"
+version = "0.1.0"
+edition = "2021"
+description = "OpenNotch core: state machine, event bus, config, tray, notes, widgets"
+license = "Apache-2.0"
+
+[dependencies]
+opennotch-platform = { path = "../platform" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+uuid = { version = "1.0", features = ["v4"] }
+thiserror = "1.0"
+tracing = "0.1"
+rusqlite = { version = "0.31", features = ["bundled"] }

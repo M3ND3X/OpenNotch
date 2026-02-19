@@ -1,0 +1,1 @@
+cargo:rustc-env=MIME_TYPES_GENERATED_PATH=/Users/m1pro/Desktop/Alet/OpenNotch/target/debug/build/mime_guess-aea989f26adec899/out/mime_types_generated.rs
