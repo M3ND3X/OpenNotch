@@ -25,7 +25,10 @@ struct NookView: View {
     }
 
     private var supplementalWidgets: [WidgetViewModel] {
-        widgets.filter { $0.id == "notes" || $0.id == "calendar" }
+        let enabledActivities = Set(appModel.snapshot.settings.liveActivitiesActivitiesEnabled)
+        return widgets.filter {
+            ($0.id == "notes" || $0.id == "calendar") && enabledActivities.contains($0.id)
+        }
     }
 
     // Match the reference empty state whenever media is idle.

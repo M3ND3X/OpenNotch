@@ -127,7 +127,7 @@ pub struct LiveActivitiesConfig {
     #[serde(default = "default_true")]
     pub enable: bool,
     #[serde(default = "default_activities_enabled")]
-    pub activities_enabled: Vec<String>, // "media", "files_tray", "calendar", "new_update"
+    pub activities_enabled: Vec<String>, // "media", "files_tray", "calendar", "notes", "new_update"
     #[serde(default)]
     pub hide_in_non_notched: bool,
     #[serde(default = "default_inactivity_timeout")]

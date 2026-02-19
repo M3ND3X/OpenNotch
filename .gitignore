@@ -1,0 +1,14 @@
+# Rust
+target/
+
+# Swift
+apps/macos/.build/
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
