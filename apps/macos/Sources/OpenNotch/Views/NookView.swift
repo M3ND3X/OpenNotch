@@ -635,7 +635,7 @@ private final class NookNotesModel: ObservableObject {
         let data = textView.attributedString().rtf(
             from: range,
             documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
-        )
+        ) ?? Self.defaultRTFData()
         notes[currentIndex].rtfData = data
         persist()
     }
@@ -680,7 +680,7 @@ private final class NookNotesModel: ObservableObject {
         return base.rtf(
             from: NSRange(location: 0, length: base.length),
             documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
-        )
+        ) ?? Data()
     }
 }
 
@@ -764,7 +764,7 @@ private struct NoteRichTextEditor: NSViewRepresentable {
             let data = textView.attributedString().rtf(
                 from: range,
                 documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
-            )
+            ) ?? Data()
             lastSerialized = data
             if rtfData != data {
                 rtfData = data
