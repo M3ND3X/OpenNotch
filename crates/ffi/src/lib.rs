@@ -2,10 +2,10 @@
 //!
 //! Exposes AppCore and types to Swift via proc macros.
 
-use opennotch_core::{
-    AppCore as CoreAppCore, Command as CoreCommand, Effect as CoreEffect,
+use opennotch_core::commands::{
+    SettingValue as CoreSettingValue, TrayAddPayload as CoreTrayAddPayload,
 };
-use opennotch_core::commands::{SettingValue as CoreSettingValue, TrayAddPayload as CoreTrayAddPayload};
+use opennotch_core::{AppCore as CoreAppCore, Command as CoreCommand, Effect as CoreEffect};
 use std::sync::Arc;
 
 uniffi::setup_scaffolding!();
@@ -327,16 +327,32 @@ impl From<TrayAddPayload> for CoreTrayAddPayload {
 /// Commands from Swift to Rust
 #[derive(uniffi::Enum, Clone)]
 pub enum Command {
-    HoverEntered { screen_id: String },
-    HoverExited { screen_id: String },
+    HoverEntered {
+        screen_id: String,
+    },
+    HoverExited {
+        screen_id: String,
+    },
     ToggleOverlay,
     ToggleSurface,
-    SwipeDown { screen_id: String, delta_y: f64 },
-    ScreenMetricsChanged { screens: Vec<ScreenMetrics> },
-    UpdateSetting { key: String, value: SettingValue },
+    SwipeDown {
+        screen_id: String,
+        delta_y: f64,
+    },
+    ScreenMetricsChanged {
+        screens: Vec<ScreenMetrics>,
+    },
+    UpdateSetting {
+        key: String,
+        value: SettingValue,
+    },
     ResetSettings,
-    TrayAddItems { payload: TrayAddPayload },
-    TrayRemove { item_ids: Vec<String> },
+    TrayAddItems {
+        payload: TrayAddPayload,
+    },
+    TrayRemove {
+        item_ids: Vec<String>,
+    },
     TraySelect {
         item_id: String,
         add_to_selection: bool,
@@ -347,18 +363,32 @@ pub enum Command {
         item_id: String,
         new_name: String,
     },
-    TrayQuickLook { item_ids: Vec<String> },
-    TrayRevealInFinder { item_id: String },
+    TrayQuickLook {
+        item_ids: Vec<String>,
+    },
+    TrayRevealInFinder {
+        item_id: String,
+    },
     TrayCopy,
-    TrayShare { item_ids: Vec<String> },
+    TrayShare {
+        item_ids: Vec<String>,
+    },
     WidgetAction {
         widget_id: String,
         action: String,
     },
-    CalendarEventsReceived { events_json: String },
-    MediaStateReceived { state_json: String },
-    CameraListReceived { cameras_json: String },
-    VolumeChanged { level: f32 },
+    CalendarEventsReceived {
+        events_json: String,
+    },
+    MediaStateReceived {
+        state_json: String,
+    },
+    CameraListReceived {
+        cameras_json: String,
+    },
+    VolumeChanged {
+        level: f32,
+    },
     PermissionStatusChanged {
         calendar: bool,
         camera: bool,
@@ -373,10 +403,9 @@ impl From<Command> for CoreCommand {
             Command::HoverExited { screen_id } => CoreCommand::HoverExited { screen_id },
             Command::ToggleOverlay => CoreCommand::ToggleOverlay,
             Command::ToggleSurface => CoreCommand::ToggleSurface,
-            Command::SwipeDown { screen_id, delta_y } => CoreCommand::SwipeDown {
-                screen_id,
-                delta_y,
-            },
+            Command::SwipeDown { screen_id, delta_y } => {
+                CoreCommand::SwipeDown { screen_id, delta_y }
+            }
             Command::ScreenMetricsChanged { screens } => CoreCommand::ScreenMetricsChanged {
                 screens: screens.into_iter().map(Into::into).collect(),
             },
@@ -398,29 +427,25 @@ impl From<Command> for CoreCommand {
             },
             Command::TraySelectAll => CoreCommand::TraySelectAll,
             Command::TrayClearSelection => CoreCommand::TrayClearSelection,
-            Command::TrayRename { item_id, new_name } => CoreCommand::TrayRename {
-                item_id,
-                new_name,
-            },
+            Command::TrayRename { item_id, new_name } => {
+                CoreCommand::TrayRename { item_id, new_name }
+            }
             Command::TrayQuickLook { item_ids } => CoreCommand::TrayQuickLook { item_ids },
-            Command::TrayRevealInFinder { item_id } => CoreCommand::TrayRevealInFinder {
-                item_id,
-            },
+            Command::TrayRevealInFinder { item_id } => CoreCommand::TrayRevealInFinder { item_id },
             Command::TrayCopy => CoreCommand::TrayCopy,
             Command::TrayShare { item_ids } => CoreCommand::TrayShare { item_ids },
-            Command::WidgetAction { widget_id, action } => CoreCommand::WidgetAction {
-                widget_id,
-                action,
-            },
+            Command::WidgetAction { widget_id, action } => {
+                CoreCommand::WidgetAction { widget_id, action }
+            }
             Command::CalendarEventsReceived { events_json } => {
                 CoreCommand::CalendarEventsReceived { events_json }
             }
-            Command::MediaStateReceived { state_json } => CoreCommand::MediaStateReceived {
-                state_json,
-            },
-            Command::CameraListReceived { cameras_json } => CoreCommand::CameraListReceived {
-                cameras_json,
-            },
+            Command::MediaStateReceived { state_json } => {
+                CoreCommand::MediaStateReceived { state_json }
+            }
+            Command::CameraListReceived { cameras_json } => {
+                CoreCommand::CameraListReceived { cameras_json }
+            }
             Command::VolumeChanged { level } => CoreCommand::VolumeChanged { level },
             Command::PermissionStatusChanged {
                 calendar,
@@ -457,11 +482,12 @@ impl From<CoreEffect> for Effect {
             CoreEffect::RevealInFinder { path } => Effect::RevealInFinder { path },
             CoreEffect::CopyToPasteboard { paths } => Effect::CopyToPasteboard { paths },
             CoreEffect::ShareItems { item_ids } => Effect::ShareItems { item_ids },
-            CoreEffect::RenameFile { old_path, new_path } => Effect::RenameFile {
-                old_path,
-                new_path,
-            },
-            CoreEffect::RequestPermission { permission } => Effect::RequestPermission { permission },
+            CoreEffect::RenameFile { old_path, new_path } => {
+                Effect::RenameFile { old_path, new_path }
+            }
+            CoreEffect::RequestPermission { permission } => {
+                Effect::RequestPermission { permission }
+            }
             CoreEffect::RunShortcut { name } => Effect::RunShortcut { name },
             CoreEffect::None => Effect::None,
         }

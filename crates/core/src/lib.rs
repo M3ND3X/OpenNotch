@@ -6,12 +6,15 @@ pub mod app_core;
 pub mod commands;
 pub mod config;
 pub mod effects;
+pub mod notes;
 pub mod state;
 pub mod tray;
-pub mod notes;
 pub mod widgets;
 
 pub use app_core::AppCore;
 pub use commands::Command;
 pub use effects::Effect;
-pub use state::{AppState, UiSnapshot, ScreenMetrics, NookViewModel, TrayViewModel, WidgetViewModel, SettingsModel, PermissionStatus, Surface};
+pub use state::{
+    AppState, NookViewModel, PermissionStatus, ScreenMetrics, SettingsModel, Surface,
+    TrayViewModel, UiSnapshot, WidgetViewModel,
+};

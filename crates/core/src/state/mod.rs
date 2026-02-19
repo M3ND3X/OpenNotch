@@ -5,16 +5,11 @@
 use serde::{Deserialize, Serialize};
 
 /// Active surface: Nook (widget strip) or Tray (file shelf).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum Surface {
+    #[default]
     Nook,
     Tray,
-}
-
-impl Default for Surface {
-    fn default() -> Self {
-        Self::Nook
-    }
 }
 
 /// Screen metrics from Swift (NSScreen safe area, frame, etc.).
@@ -32,21 +27,11 @@ pub struct ScreenMetrics {
 }
 
 /// Permission status for a feature.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PermissionStatus {
     pub calendar: bool,
     pub camera: bool,
     pub automation: bool,
-}
-
-impl Default for PermissionStatus {
-    fn default() -> Self {
-        Self {
-            calendar: false,
-            camera: false,
-            automation: false,
-        }
-    }
 }
 
 /// Widget view model for rendering.
@@ -90,7 +75,7 @@ pub struct SettingsModel {
     pub start_at_login: bool,
     pub hotkey: String,
     pub show_in_fullscreen: String, // "on_notched" | "always" | "never"
-    pub media_source: String,      // "system"
+    pub media_source: String,       // "system"
     pub prefer_round_buttons: bool,
     pub translucent_notch_background: bool,
     pub always_open_on_hover: bool,
@@ -203,7 +188,10 @@ impl Default for SettingsModel {
             tray_max_items: 50,
             tray_width: 11,
             drop_area_width: 11,
-            drop_area_pipelines_enabled: vec!["compress_images".to_string(), "zip_unzip".to_string()],
+            drop_area_pipelines_enabled: vec![
+                "compress_images".to_string(),
+                "zip_unzip".to_string(),
+            ],
             widgets_enabled: vec![],
             widgets_order: vec![],
         }

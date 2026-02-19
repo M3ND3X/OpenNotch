@@ -38,10 +38,10 @@ To distribute via Homebrew:
      version "0.1.0"
      sha256 "..."
 
-     url "https://github.com/your-org/OpenNotch/releases/download/v#{version}/OpenNotch.dmg"
+     url "https://github.com/m3nd3x/OpenNotch/releases/download/v#{version}/OpenNotch.dmg"
      name "OpenNotch"
      desc "Notch-anchored overlay hub for macOS"
-     homepage "https://github.com/your-org/OpenNotch"
+     homepage "https://github.com/m3nd3x/OpenNotch"
 
      app "OpenNotch.app"
    end

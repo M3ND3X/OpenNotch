@@ -36,10 +36,12 @@ impl NotesRepo {
             [],
         )?;
         let version: u32 = conn
-            .query_row("SELECT version FROM schema_version LIMIT 1", [], |r| r.get(0))
+            .query_row("SELECT version FROM schema_version LIMIT 1", [], |r| {
+                r.get(0)
+            })
             .unwrap_or(0);
 
-        if version < 1 {
+        if version < SCHEMA_VERSION {
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS notes (
                     id TEXT PRIMARY KEY,
@@ -54,7 +56,10 @@ impl NotesRepo {
                 "CREATE INDEX IF NOT EXISTS idx_notes_updated ON notes(updated_at DESC)",
                 [],
             )?;
-            conn.execute("INSERT OR REPLACE INTO schema_version (version) VALUES (1)", [])?;
+            conn.execute(
+                "INSERT OR REPLACE INTO schema_version (version) VALUES (?1)",
+                [SCHEMA_VERSION],
+            )?;
         }
 
         Ok(())
@@ -90,15 +95,19 @@ impl NotesRepo {
         )?;
         let pattern = format!("%{}%", query.replace('%', "\\%").replace('_', "\\_"));
         let rows = stmt.query_map([&pattern], |r| {
-            Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?))
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+            ))
         })?;
         rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
     }
 
     pub fn list_all(&self) -> Result<Vec<(String, String)>, NotesError> {
-        let mut stmt = self.conn.prepare(
-            "SELECT id, title FROM notes ORDER BY updated_at DESC",
-        )?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id, title FROM notes ORDER BY updated_at DESC")?;
         let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
         rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
     }

@@ -18,16 +18,25 @@ private let widgetTitleGray = Color.white.opacity(0.62)
 struct NookView: View {
     @ObservedObject var appModel: AppModel
     @StateObject private var mirrorCamera = MirrorCameraController()
+    @StateObject private var notesModel = NookNotesModel()
 
     private var nook: NookViewModel { appModel.snapshot.nook }
     private var widgets: [WidgetViewModel] {
         nook.widgets.filter { $0.id != "placeholder" }
     }
 
+    private var showDividers: Bool {
+        appModel.snapshot.settings.nookShowDividers
+    }
+
+    private var enabledWidgetIds: Set<String> {
+        let enabled = appModel.snapshot.settings.widgetsEnabled
+        return enabled.isEmpty ? Set(widgets.map(\.id)) : Set(enabled)
+    }
+
     private var supplementalWidgets: [WidgetViewModel] {
-        let enabledActivities = Set(appModel.snapshot.settings.liveActivitiesActivitiesEnabled)
         return widgets.filter {
-            ($0.id == "notes" || $0.id == "calendar") && enabledActivities.contains($0.id)
+            ($0.id == "notes" || $0.id == "calendar") && enabledWidgetIds.contains($0.id)
         }
     }
 
@@ -122,7 +131,7 @@ struct NookView: View {
                 .frame(width: ns(280))
                 .frame(minHeight: ns(108))
 
-                verticalDivider
+                dividerOrSpacer
 
                 VStack(spacing: ns(12)) {
                     Image(systemName: "sparkles")
@@ -150,7 +159,7 @@ struct NookView: View {
                 .frame(width: ns(240))
                 .frame(minHeight: ns(108))
 
-                verticalDivider
+                dividerOrSpacer
 
                 MirrorButton(
                     style: .hero,
@@ -162,8 +171,12 @@ struct NookView: View {
                     .frame(minHeight: ns(108))
 
                 ForEach(supplementalWidgets, id: \.id) { widget in
-                    verticalDivider
-                    SupplementalNookWidgetCard(widget: widget, appModel: appModel)
+                    dividerOrSpacer
+                    if widget.id == "calendar" {
+                        CalendarSupplementView(widget: widget)
+                    } else {
+                        NotesSupplementView(notesModel: notesModel)
+                    }
                 }
             }
             .padding(.horizontal, ns(4))
@@ -179,105 +192,163 @@ struct NookView: View {
             .padding(.vertical, ns(10))
             .padding(.horizontal, ns(24))
     }
-}
 
-struct SupplementalNookWidgetCard: View {
-    let widget: WidgetViewModel
-    @ObservedObject var appModel: AppModel
-    @State private var isHovered = false
-
-    var body: some View {
-        Button {
-            appModel.dispatch(.widgetAction(widgetId: widget.id, action: "tap"))
-        } label: {
-            Group {
-                if widget.id == "calendar" {
-                    CalendarSupplementView(widget: widget)
-                } else {
-                    NotesSupplementView(widget: widget)
-                }
-            }
-            .scaleEffect(isHovered ? 1.02 : 1.0)
+    @ViewBuilder
+    private var dividerOrSpacer: some View {
+        if showDividers {
+            verticalDivider
+        } else {
+            Spacer().frame(width: ns(18))
         }
-        .buttonStyle(.plain)
-        .onHover { isHovered = $0 }
-        .animation(.easeInOut(duration: 0.2), value: isHovered)
     }
 }
 
-struct NotesSupplementView: View {
-    let widget: WidgetViewModel
-    private let cardBg = LinearGradient(
-        colors: [Color.white.opacity(0.11), Color.white.opacity(0.07)],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+private struct NotesSupplementView: View {
+    @ObservedObject var notesModel: NookNotesModel
+    @State private var isHovered = false
+
+    private var titleBinding: Binding<String> {
+        Binding(
+            get: { notesModel.currentTitle },
+            set: { notesModel.updateCurrentTitle($0) }
+        )
+    }
+
+    private var bodyBinding: Binding<Data> {
+        Binding(
+            get: { notesModel.currentRTFData },
+            set: { notesModel.updateCurrentRTF($0) }
+        )
+    }
+
+    private var activeNoteTitle: String {
+        let title = notesModel.currentTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        if title.isEmpty { return "Untitled" }
+        return title
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ns(8)) {
-            Text(widget.compactTitle)
-                .font(.system(size: ns(13), weight: .bold))
-                .foregroundStyle(contentPrimary)
-            Text(widget.compactContent)
-                .font(.system(size: ns(12), weight: .medium))
-                .foregroundStyle(contentSecondary)
-                .lineLimit(2)
+        HStack(spacing: ns(8)) {
+            VStack(alignment: .leading, spacing: ns(6)) {
+                TextField("Untitled", text: titleBinding)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: ns(22), weight: .bold, design: .rounded))
+                    .foregroundStyle(contentPrimary)
+                    .lineLimit(1)
 
-            Spacer(minLength: 0)
+                NoteRichTextEditor(
+                    rtfData: bodyBinding,
+                    onAttach: { notesModel.attach(textView: $0) },
+                    onSelectionChange: { notesModel.refreshFormattingState() }
+                )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            HStack(spacing: ns(8)) {
-                Circle().fill(Color.blue).frame(width: ns(10), height: ns(10))
-                Spacer()
-                HStack(spacing: ns(6)) {
-                    ForEach(["bold", "italic", "underline"], id: \.self) { symbol in
-                        Image(systemName: "textformat.\(symbol)")
-                            .font(.system(size: ns(10), weight: .bold))
-                            .foregroundStyle(contentSecondary)
-                            .frame(width: ns(18), height: ns(18))
-                            .background(Circle().fill(Color.white.opacity(0.09)))
+                HStack(spacing: ns(8)) {
+                    Circle().fill(Color.blue).frame(width: ns(10), height: ns(10))
+                    Spacer()
+                    HStack(spacing: ns(6)) {
+                        formatButton(symbol: "A", active: false) {
+                            notesModel.clearFormatting()
+                        }
+                        formatButton(symbol: "B", active: notesModel.formatting.bold) {
+                            notesModel.toggleBold()
+                        }
+                        formatButton(symbol: "I", active: notesModel.formatting.italic) {
+                            notesModel.toggleItalic()
+                        }
+                        formatButton(symbol: "U", active: notesModel.formatting.underline) {
+                            notesModel.toggleUnderline()
+                        }
                     }
                 }
             }
+            .padding(ns(12))
+            .frame(width: ns(214), height: ns(108), alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: ns(18), style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.10), Color.white.opacity(0.06)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: ns(18), style: .continuous)
+                            .stroke(Color.white.opacity(0.07), lineWidth: ns(0.8))
+                    )
+            )
+
+            VStack(spacing: ns(7)) {
+                Text("\(notesModel.currentIndex + 1)")
+                    .font(.system(size: ns(10), weight: .semibold))
+                    .foregroundStyle(contentMuted)
+
+                sideRailButton(icon: "triangle.fill") {
+                    notesModel.rotate(by: -1)
+                }
+                sideRailButton(icon: "diamond.fill") {
+                    notesModel.rotate(by: 1)
+                }
+                sideRailButton(icon: "square.fill") {
+                    notesModel.addNote()
+                }
+
+                Text(activeNoteTitle)
+                    .font(.system(size: ns(7), weight: .semibold))
+                    .foregroundStyle(contentMuted)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(width: ns(44), alignment: .center)
+            }
+            .frame(width: ns(46), height: ns(108))
+            .background(
+                RoundedRectangle(cornerRadius: ns(14), style: .continuous)
+                    .fill(Color.white.opacity(0.06))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: ns(14), style: .continuous)
+                            .stroke(Color.white.opacity(0.07), lineWidth: ns(0.8))
+                    )
+            )
         }
-        .padding(ns(12))
-        .frame(width: ns(210), height: ns(108), alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: ns(18), style: .continuous)
-                .fill(cardBg)
-                .overlay(
-                    RoundedRectangle(cornerRadius: ns(18), style: .continuous)
-                        .stroke(Color.white.opacity(0.07), lineWidth: ns(0.8))
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .onHover { isHovered = $0 }
+        .animation(.easeInOut(duration: 0.18), value: isHovered)
+    }
+
+    @ViewBuilder
+    private func formatButton(symbol: String, active: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(symbol)
+                .font(.system(size: ns(13), weight: .bold))
+                .foregroundStyle(active ? Color.white : contentSecondary)
+                .frame(width: ns(26), height: ns(26))
+                .background(
+                    Circle()
+                        .fill(active ? Color.white.opacity(0.22) : Color.white.opacity(0.09))
                 )
-        )
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func sideRailButton(icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: ns(10), weight: .bold))
+                .foregroundStyle(Color.blue.opacity(0.95))
+                .frame(width: ns(24), height: ns(24))
+                .background(
+                    RoundedRectangle(cornerRadius: ns(9), style: .continuous)
+                        .fill(Color.white.opacity(0.08))
+                )
+        }
+        .buttonStyle(.plain)
     }
 }
 
 struct CalendarSupplementView: View {
     let widget: WidgetViewModel
-
-    private var days: [String] {
-        let formatter = DateFormatter()
-        formatter.locale = Locale.current
-        formatter.setLocalizedDateFormatFromTemplate("EEEEE")
-        let calendar = Calendar.current
-        let now = Date()
-        return (-2...2).compactMap {
-            guard let d = calendar.date(byAdding: .day, value: $0, to: now) else { return nil }
-            return formatter.string(from: d).uppercased()
-        }
-    }
-
-    private var dayNumbers: [String] {
-        let formatter = DateFormatter()
-        formatter.locale = Locale.current
-        formatter.setLocalizedDateFormatFromTemplate("d")
-        let calendar = Calendar.current
-        let now = Date()
-        return (-2...2).compactMap {
-            guard let d = calendar.date(byAdding: .day, value: $0, to: now) else { return nil }
-            return formatter.string(from: d)
-        }
-    }
 
     private var monthTitle: String {
         let formatter = DateFormatter()
@@ -286,38 +357,424 @@ struct CalendarSupplementView: View {
         return formatter.string(from: Date())
     }
 
+    private var eventCount: Int {
+        Int(widget.compactContent.split(separator: " ").first ?? "") ?? 0
+    }
+
+    private var statusText: String {
+        if eventCount == 0 { return "Nothing for today" }
+        if eventCount == 1 { return "1 upcoming event" }
+        return "\(eventCount) upcoming events"
+    }
+
+    private var weekDates: [Date] {
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? now
+        return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: startOfWeek) }
+    }
+
+    private func dayAbbr(for date: Date, isToday: Bool) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.dateFormat = isToday ? "EEE" : "EEEEE"
+        return formatter.string(from: date).uppercased()
+    }
+
+    private func dayNumber(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.setLocalizedDateFormatFromTemplate("d")
+        return formatter.string(from: date)
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: ns(10)) {
-            Text(monthTitle)
-                .font(.system(size: ns(18), weight: .bold))
-                .foregroundStyle(contentPrimary)
-            HStack(spacing: ns(10)) {
-                ForEach(Array(zip(days.indices, days)), id: \.0) { idx, day in
-                    VStack(spacing: ns(2)) {
-                        Text(day)
-                            .font(.system(size: ns(9), weight: .bold))
-                            .foregroundStyle(contentMuted)
-                        Text(dayNumbers[idx])
-                            .font(.system(size: ns(15), weight: idx == 2 ? .bold : .semibold))
-                            .foregroundStyle(idx == 2 ? Color.blue : contentSecondary)
+        VStack(alignment: .leading, spacing: ns(8)) {
+            HStack(alignment: .center, spacing: ns(10)) {
+                Text(monthTitle)
+                    .font(.system(size: ns(28), weight: .bold, design: .rounded))
+                    .foregroundStyle(contentPrimary)
+
+                Spacer(minLength: ns(6))
+
+                HStack(spacing: ns(8)) {
+                    ForEach(weekDates, id: \.self) { date in
+                        let isToday = Calendar.current.isDateInToday(date)
+                        VStack(spacing: ns(1)) {
+                            Text(dayAbbr(for: date, isToday: isToday))
+                                .font(.system(size: ns(8), weight: .bold))
+                                .foregroundStyle(contentMuted)
+                            Text(dayNumber(for: date))
+                                .font(.system(size: ns(13), weight: isToday ? .bold : .semibold))
+                                .foregroundStyle(isToday ? Color.blue : contentSecondary)
+                        }
                     }
                 }
             }
+
+            Spacer(minLength: ns(2))
+
+            VStack(spacing: ns(4)) {
+                Image(systemName: "calendar.badge.checkmark")
+                    .font(.system(size: ns(15), weight: .semibold))
+                    .foregroundStyle(contentMuted)
+                Text(statusText)
+                    .font(.system(size: ns(13), weight: .semibold))
+                    .foregroundStyle(contentSecondary)
+            }
+            .frame(maxWidth: .infinity)
+
             Spacer(minLength: 0)
-            Text(widget.compactContent == "0 events" ? "Nothing for today" : widget.compactContent)
-                .font(.system(size: ns(12), weight: .semibold))
-                .foregroundStyle(contentSecondary)
         }
-        .padding(ns(12))
-        .frame(width: ns(230), height: ns(108), alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: ns(18), style: .continuous)
-                .fill(Color.white.opacity(0.06))
-                .overlay(
-                    RoundedRectangle(cornerRadius: ns(18), style: .continuous)
-                        .stroke(Color.white.opacity(0.07), lineWidth: ns(0.8))
-                )
+        .padding(.horizontal, ns(10))
+        .padding(.vertical, ns(6))
+        .frame(width: ns(250), height: ns(108), alignment: .leading)
+    }
+}
+
+private struct NookNoteItem: Identifiable, Codable {
+    var id: UUID
+    var title: String
+    var rtfData: Data
+}
+
+private struct NoteFormattingState {
+    var bold = false
+    var italic = false
+    var underline = false
+}
+
+@MainActor
+private final class NookNotesModel: ObservableObject {
+    @Published private(set) var notes: [NookNoteItem] = []
+    @Published private(set) var currentIndex: Int = 0
+    @Published var formatting = NoteFormattingState()
+
+    private weak var activeTextView: NSTextView?
+    private let storageKey = "OpenNotch.NookNotes.v1"
+
+    init() {
+        load()
+    }
+
+    var currentTitle: String {
+        guard notes.indices.contains(currentIndex) else { return "" }
+        return notes[currentIndex].title
+    }
+
+    var currentRTFData: Data {
+        guard notes.indices.contains(currentIndex) else { return Self.defaultRTFData() }
+        return notes[currentIndex].rtfData
+    }
+
+    func updateCurrentTitle(_ title: String) {
+        guard notes.indices.contains(currentIndex) else { return }
+        notes[currentIndex].title = title
+        persist()
+    }
+
+    func updateCurrentRTF(_ data: Data) {
+        guard notes.indices.contains(currentIndex) else { return }
+        notes[currentIndex].rtfData = data
+        persist()
+    }
+
+    func addNote() {
+        notes.append(
+            NookNoteItem(
+                id: UUID(),
+                title: "Note \(notes.count + 1)",
+                rtfData: Self.defaultRTFData()
+            )
         )
+        currentIndex = max(0, notes.count - 1)
+        persist()
+        applyCurrentNoteToTextView()
+        refreshFormattingState()
+    }
+
+    func rotate(by delta: Int) {
+        guard !notes.isEmpty else { return }
+        currentIndex = (currentIndex + delta + notes.count) % notes.count
+        applyCurrentNoteToTextView()
+        refreshFormattingState()
+    }
+
+    func attach(textView: NSTextView) {
+        activeTextView = textView
+        applyCurrentNoteToTextView()
+        refreshFormattingState()
+    }
+
+    func refreshFormattingState() {
+        guard let textView = activeTextView else {
+            formatting = NoteFormattingState()
+            return
+        }
+        let attrs = currentAttributes(in: textView)
+        let font = (attrs[.font] as? NSFont) ?? NSFont.systemFont(ofSize: 12, weight: .medium)
+        let traits = NSFontManager.shared.traits(of: font)
+        formatting = NoteFormattingState(
+            bold: traits.contains(.boldFontMask),
+            italic: traits.contains(.italicFontMask),
+            underline: (attrs[.underlineStyle] as? Int ?? 0) != 0
+        )
+    }
+
+    func toggleBold() {
+        toggleFontTrait(.boldFontMask)
+    }
+
+    func toggleItalic() {
+        toggleFontTrait(.italicFontMask)
+    }
+
+    func toggleUnderline() {
+        guard let textView = activeTextView else { return }
+        let selected = textView.selectedRange()
+
+        if selected.length == 0 {
+            var attrs = textView.typingAttributes
+            let enabled = (attrs[.underlineStyle] as? Int ?? 0) != 0
+            attrs[.underlineStyle] = enabled ? 0 : NSUnderlineStyle.single.rawValue
+            textView.typingAttributes = attrs
+        } else if let storage = textView.textStorage {
+            let attrs = storage.attributes(at: selected.location, effectiveRange: nil)
+            let enabled = (attrs[.underlineStyle] as? Int ?? 0) != 0
+            storage.beginEditing()
+            storage.addAttribute(
+                .underlineStyle,
+                value: enabled ? 0 : NSUnderlineStyle.single.rawValue,
+                range: selected
+            )
+            storage.endEditing()
+        }
+
+        updateCurrentFromTextView()
+        refreshFormattingState()
+    }
+
+    func clearFormatting() {
+        guard let textView = activeTextView else { return }
+        let manager = NSFontManager.shared
+        let selected = textView.selectedRange()
+
+        let stripTraits: (NSFont) -> NSFont = { font in
+            let noBold = manager.convert(font, toNotHaveTrait: .boldFontMask)
+            return manager.convert(noBold, toNotHaveTrait: .italicFontMask)
+        }
+
+        if selected.length == 0 {
+            var attrs = textView.typingAttributes
+            let current = (attrs[.font] as? NSFont) ?? NSFont.systemFont(ofSize: ns(12), weight: .medium)
+            attrs[.font] = stripTraits(current)
+            attrs[.underlineStyle] = 0
+            textView.typingAttributes = attrs
+        } else if let storage = textView.textStorage {
+            storage.beginEditing()
+            storage.enumerateAttribute(.font, in: selected, options: []) { value, range, _ in
+                let base = (value as? NSFont) ?? NSFont.systemFont(ofSize: ns(12), weight: .medium)
+                storage.addAttribute(.font, value: stripTraits(base), range: range)
+            }
+            storage.addAttribute(.underlineStyle, value: 0, range: selected)
+            storage.endEditing()
+        }
+
+        updateCurrentFromTextView()
+        refreshFormattingState()
+    }
+
+    private func toggleFontTrait(_ trait: NSFontTraitMask) {
+        guard let textView = activeTextView else { return }
+        let manager = NSFontManager.shared
+        let selected = textView.selectedRange()
+
+        if selected.length == 0 {
+            var attrs = textView.typingAttributes
+            let current = (attrs[.font] as? NSFont) ?? NSFont.systemFont(ofSize: 12, weight: .medium)
+            let hasTrait = manager.traits(of: current).contains(trait)
+            let converted = hasTrait ? manager.convert(current, toNotHaveTrait: trait) : manager.convert(current, toHaveTrait: trait)
+            attrs[.font] = converted
+            textView.typingAttributes = attrs
+        } else if let storage = textView.textStorage {
+            storage.beginEditing()
+            storage.enumerateAttribute(.font, in: selected, options: []) { value, range, _ in
+                let base = (value as? NSFont) ?? NSFont.systemFont(ofSize: 12, weight: .medium)
+                let hasTrait = manager.traits(of: base).contains(trait)
+                let converted = hasTrait ? manager.convert(base, toNotHaveTrait: trait) : manager.convert(base, toHaveTrait: trait)
+                storage.addAttribute(.font, value: converted, range: range)
+            }
+            storage.endEditing()
+        }
+
+        updateCurrentFromTextView()
+        refreshFormattingState()
+    }
+
+    private func applyCurrentNoteToTextView() {
+        guard
+            let textView = activeTextView,
+            notes.indices.contains(currentIndex)
+        else { return }
+
+        let data = notes[currentIndex].rtfData
+        let attributed = (try? NSAttributedString(
+            data: data,
+            options: [.documentType: NSAttributedString.DocumentType.rtf],
+            documentAttributes: nil
+        )) ?? NSAttributedString(string: "")
+        textView.textStorage?.setAttributedString(attributed)
+    }
+
+    private func updateCurrentFromTextView() {
+        guard
+            let textView = activeTextView,
+            notes.indices.contains(currentIndex)
+        else { return }
+        let range = NSRange(location: 0, length: textView.attributedString().length)
+        let data = textView.attributedString().rtf(
+            from: range,
+            documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+        )
+        notes[currentIndex].rtfData = data
+        persist()
+    }
+
+    private func currentAttributes(in textView: NSTextView) -> [NSAttributedString.Key: Any] {
+        let selected = textView.selectedRange()
+        if selected.length > 0, let storage = textView.textStorage, storage.length > 0, selected.location < storage.length {
+            return storage.attributes(at: selected.location, effectiveRange: nil)
+        }
+        return textView.typingAttributes
+    }
+
+    private func load() {
+        if
+            let data = UserDefaults.standard.data(forKey: storageKey),
+            let decoded = try? JSONDecoder().decode([NookNoteItem].self, from: data),
+            !decoded.isEmpty
+        {
+            notes = decoded
+            currentIndex = 0
+            return
+        }
+        notes = [
+            NookNoteItem(
+                id: UUID(),
+                title: "Dads",
+                rtfData: Self.defaultRTFData()
+            )
+        ]
+        currentIndex = 0
+        persist()
+    }
+
+    private func persist() {
+        if let data = try? JSONEncoder().encode(notes) {
+            UserDefaults.standard.set(data, forKey: storageKey)
+        }
+    }
+
+    private static func defaultRTFData() -> Data {
+        let base = NSAttributedString(string: "")
+        return base.rtf(
+            from: NSRange(location: 0, length: base.length),
+            documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+        )
+    }
+}
+
+private struct NoteRichTextEditor: NSViewRepresentable {
+    @Binding var rtfData: Data
+    let onAttach: (NSTextView) -> Void
+    let onSelectionChange: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(rtfData: $rtfData, onSelectionChange: onSelectionChange)
+    }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        scrollView.drawsBackground = false
+        scrollView.borderType = .noBorder
+        scrollView.hasVerticalScroller = false
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+
+        let textView = NSTextView()
+        textView.isRichText = true
+        textView.drawsBackground = false
+        textView.isEditable = true
+        textView.isSelectable = true
+        textView.importsGraphics = false
+        textView.usesFontPanel = false
+        textView.allowsUndo = true
+        textView.textColor = NSColor.white.withAlphaComponent(0.9)
+        textView.font = NSFont.systemFont(ofSize: ns(12), weight: .medium)
+        textView.insertionPointColor = .white
+        textView.textContainerInset = NSSize(width: 0, height: 1)
+        textView.textContainer?.widthTracksTextView = true
+        textView.isHorizontallyResizable = false
+        textView.delegate = context.coordinator
+
+        context.coordinator.apply(data: rtfData, to: textView)
+        onAttach(textView)
+
+        scrollView.documentView = textView
+        return scrollView
+    }
+
+    func updateNSView(_ nsView: NSScrollView, context: Context) {
+        guard let textView = nsView.documentView as? NSTextView else { return }
+        context.coordinator.applyIfNeeded(data: rtfData, to: textView)
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        @Binding private var rtfData: Data
+        private let onSelectionChange: () -> Void
+        private var isProgrammatic = false
+        private var lastSerialized = Data()
+
+        init(rtfData: Binding<Data>, onSelectionChange: @escaping () -> Void) {
+            _rtfData = rtfData
+            self.onSelectionChange = onSelectionChange
+        }
+
+        func applyIfNeeded(data: Data, to textView: NSTextView) {
+            guard data != lastSerialized else { return }
+            apply(data: data, to: textView)
+        }
+
+        func apply(data: Data, to textView: NSTextView) {
+            isProgrammatic = true
+            defer { isProgrammatic = false }
+            let attributed = (try? NSAttributedString(
+                data: data,
+                options: [.documentType: NSAttributedString.DocumentType.rtf],
+                documentAttributes: nil
+            )) ?? NSAttributedString(string: "")
+            textView.textStorage?.setAttributedString(attributed)
+            lastSerialized = data
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard !isProgrammatic else { return }
+            guard let textView = notification.object as? NSTextView else { return }
+            let range = NSRange(location: 0, length: textView.attributedString().length)
+            let data = textView.attributedString().rtf(
+                from: range,
+                documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+            )
+            lastSerialized = data
+            if rtfData != data {
+                rtfData = data
+            }
+            onSelectionChange()
+        }
+
+        func textViewDidChangeSelection(_ notification: Notification) {
+            onSelectionChange()
+        }
     }
 }
 

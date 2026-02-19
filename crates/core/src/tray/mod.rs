@@ -173,8 +173,6 @@ impl TrayEngine {
     }
 
     pub fn get_paths_for_ids(&self, ids: &[String]) -> Vec<String> {
-        ids.iter()
-            .filter_map(|id| self.get_item_path(id))
-            .collect()
+        ids.iter().filter_map(|id| self.get_item_path(id)).collect()
     }
 }

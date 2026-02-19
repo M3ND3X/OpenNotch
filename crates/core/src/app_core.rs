@@ -91,15 +91,20 @@ impl AppCore {
             })
             .unwrap_or_default();
 
-        let mut state = AppState::default();
-        state.screens = initial_screen_metrics;
-        state.settings = settings;
+        let state = AppState {
+            screens: initial_screen_metrics,
+            settings,
+            ..AppState::default()
+        };
 
         let tray_engine = Arc::new(RwLock::new(TrayEngine::new(
             config.read().map(|c| c.tray.max_items).unwrap_or(50),
         )));
 
-        let notes_path = config_path.parent().map(|p| p.join("notes.db")).unwrap_or_else(|| PathBuf::from("notes.db"));
+        let notes_path = config_path
+            .parent()
+            .map(|p| p.join("notes.db"))
+            .unwrap_or_else(|| PathBuf::from("notes.db"));
         let mut widget_runtime = WidgetRuntime::new()
             .with_notes_db(&notes_path)
             .with_platform_widgets();
@@ -164,11 +169,7 @@ impl AppCore {
                 }
             }
             Command::TrayAddItems { payload } => {
-                let max_items = self
-                    .config
-                    .read()
-                    .map(|c| c.tray.max_items)
-                    .unwrap_or(50);
+                let max_items = self.config.read().map(|c| c.tray.max_items).unwrap_or(50);
                 let mut tray = self.tray_engine.write().unwrap();
                 tray.add_items(payload.clone(), max_items);
                 let vm = tray.to_view_model();
@@ -211,7 +212,7 @@ impl AppCore {
                 if let Some(old_path) = tray.get_item_path(item_id) {
                     let parent = std::path::Path::new(&old_path).parent();
                     if let Some(p) = parent {
-                        let new_path = p.join(&new_name);
+                        let new_path = p.join(new_name);
                         effects.push(Effect::RenameFile {
                             old_path,
                             new_path: new_path.to_string_lossy().to_string(),
@@ -243,9 +244,7 @@ impl AppCore {
                 let tray = self.tray_engine.read().unwrap();
                 let paths = tray.get_paths_for_ids(item_ids);
                 if !paths.is_empty() {
-                    effects.push(Effect::ShareItems {
-                        item_ids: paths,
-                    });
+                    effects.push(Effect::ShareItems { item_ids: paths });
                 }
             }
             Command::WidgetAction { widget_id, action } => {
@@ -592,7 +591,8 @@ impl AppCore {
                 if let SettingValue::StringList(v) = value {
                     config.widgets.enabled = v.clone();
                     state.settings.widgets_enabled = v.clone();
-                    let (enabled, order) = (config.widgets.enabled.clone(), config.widgets.order.clone());
+                    let (enabled, order) =
+                        (config.widgets.enabled.clone(), config.widgets.order.clone());
                     if let Ok(mut runtime) = self.widget_runtime.write() {
                         runtime.configure(&enabled, &order);
                     }
@@ -602,7 +602,8 @@ impl AppCore {
                 if let SettingValue::StringList(v) = value {
                     config.widgets.order = v.clone();
                     state.settings.widgets_order = v.clone();
-                    let (enabled, order) = (config.widgets.enabled.clone(), config.widgets.order.clone());
+                    let (enabled, order) =
+                        (config.widgets.enabled.clone(), config.widgets.order.clone());
                     if let Ok(mut runtime) = self.widget_runtime.write() {
                         runtime.configure(&enabled, &order);
                     }
@@ -658,15 +659,24 @@ impl AppCore {
             live_activities_inactivity_timeout: default_config.live_activities.inactivity_timeout,
             live_activities_enable_interactive: default_config.live_activities.enable_interactive,
             live_activities_enable_quick_peek: default_config.live_activities.enable_quick_peek,
-            live_activities_unhide_automatically: default_config.live_activities.unhide_automatically,
+            live_activities_unhide_automatically: default_config
+                .live_activities
+                .unhide_automatically,
             live_activities_show_song_change: default_config.live_activities.show_song_change,
-            live_activities_hud_replacement_enable: default_config.live_activities.hud_replacement_enable,
+            live_activities_hud_replacement_enable: default_config
+                .live_activities
+                .hud_replacement_enable,
             live_activities_hud_disable_colors: default_config.live_activities.hud_disable_colors,
-            live_activities_hud_show_all_screens: default_config.live_activities.hud_show_all_screens,
+            live_activities_hud_show_all_screens: default_config
+                .live_activities
+                .hud_show_all_screens,
             live_activities_album_corner_radius: default_config.live_activities.album_corner_radius,
             live_activities_effect_type: default_config.live_activities.effect_type.clone(),
             live_activities_colored_effects: default_config.live_activities.colored_effects,
-            live_activities_activities_enabled: default_config.live_activities.activities_enabled.clone(),
+            live_activities_activities_enabled: default_config
+                .live_activities
+                .activities_enabled
+                .clone(),
             nook_enable: default_config.nook.enable,
             nook_show_dividers: default_config.nook.show_dividers,
             tray_ephemeral: default_config.tray.ephemeral,
@@ -679,7 +689,10 @@ impl AppCore {
         };
 
         if let Ok(mut runtime) = self.widget_runtime.write() {
-            runtime.configure(&default_config.widgets.enabled, &default_config.widgets.order);
+            runtime.configure(
+                &default_config.widgets.enabled,
+                &default_config.widgets.order,
+            );
         }
         if let Ok(mut tray) = self.tray_engine.write() {
             *tray = TrayEngine::new(default_config.tray.max_items);

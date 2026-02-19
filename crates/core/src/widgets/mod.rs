@@ -121,7 +121,7 @@ impl WidgetProtocol for CalendarWidget {
             .events_json
             .read()
             .ok()
-            .and_then(|s| serde_json::from_str::<Vec<serde_json::Value>>(&*s).ok())
+            .and_then(|s| serde_json::from_str::<Vec<serde_json::Value>>(&s).ok())
             .map(|v: Vec<serde_json::Value>| v.len())
             .unwrap_or(0);
         WidgetViewModel {
@@ -209,7 +209,7 @@ impl WidgetProtocol for MediaWidget {
             .state_json
             .read()
             .ok()
-            .and_then(|s| serde_json::from_str::<serde_json::Value>(&*s).ok())
+            .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
             .and_then(|v| v.get("title").and_then(|t| t.as_str()).map(String::from))
             .unwrap_or_else(|| "—".to_string());
         WidgetViewModel {
@@ -252,7 +252,7 @@ impl WidgetProtocol for CameraWidget {
             .cameras_json
             .read()
             .ok()
-            .and_then(|s| serde_json::from_str::<Vec<serde_json::Value>>(&*s).ok())
+            .and_then(|s| serde_json::from_str::<Vec<serde_json::Value>>(&s).ok())
             .map(|v: Vec<serde_json::Value>| v.len())
             .unwrap_or(0);
         WidgetViewModel {
@@ -337,10 +337,8 @@ impl WidgetRuntime {
     }
 
     pub fn with_notes_db(mut self, _notes_path: &Path) -> Self {
-        self.widgets.insert(
-            "notes".to_string(),
-            Box::new(NotesWidget::new()),
-        );
+        self.widgets
+            .insert("notes".to_string(), Box::new(NotesWidget::new()));
         self
     }
 
@@ -353,10 +351,8 @@ impl WidgetRuntime {
             "calendar".to_string(),
             Box::new(CalendarWidget::new(calendar_events.clone())),
         );
-        self.widgets.insert(
-            "shortcuts".to_string(),
-            Box::new(ShortcutsWidget::new()),
-        );
+        self.widgets
+            .insert("shortcuts".to_string(), Box::new(ShortcutsWidget::new()));
         self.widgets.insert(
             "media".to_string(),
             Box::new(MediaWidget::new(media_state.clone())),

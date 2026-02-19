@@ -9,38 +9,81 @@ use crate::state::ScreenMetrics;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Command {
     // Overlay / activation
-    HoverEntered { screen_id: String },
-    HoverExited { screen_id: String },
+    HoverEntered {
+        screen_id: String,
+    },
+    HoverExited {
+        screen_id: String,
+    },
     ToggleOverlay,
     ToggleSurface,
-    SwipeDown { screen_id: String, delta_y: f64 },
-    ScreenMetricsChanged { screens: Vec<ScreenMetrics> },
+    SwipeDown {
+        screen_id: String,
+        delta_y: f64,
+    },
+    ScreenMetricsChanged {
+        screens: Vec<ScreenMetrics>,
+    },
 
     // Settings
-    UpdateSetting { key: String, value: SettingValue },
+    UpdateSetting {
+        key: String,
+        value: SettingValue,
+    },
     ResetSettings,
 
     // Tray
-    TrayAddItems { payload: TrayAddPayload },
-    TrayRemove { item_ids: Vec<String> },
-    TraySelect { item_id: String, add_to_selection: bool },
+    TrayAddItems {
+        payload: TrayAddPayload,
+    },
+    TrayRemove {
+        item_ids: Vec<String>,
+    },
+    TraySelect {
+        item_id: String,
+        add_to_selection: bool,
+    },
     TraySelectAll,
     TrayClearSelection,
-    TrayRename { item_id: String, new_name: String },
-    TrayQuickLook { item_ids: Vec<String> },
-    TrayRevealInFinder { item_id: String },
+    TrayRename {
+        item_id: String,
+        new_name: String,
+    },
+    TrayQuickLook {
+        item_ids: Vec<String>,
+    },
+    TrayRevealInFinder {
+        item_id: String,
+    },
     TrayCopy,
-    TrayShare { item_ids: Vec<String> },
+    TrayShare {
+        item_ids: Vec<String>,
+    },
 
     // Widget interactions (placeholder for later)
-    WidgetAction { widget_id: String, action: String },
+    WidgetAction {
+        widget_id: String,
+        action: String,
+    },
 
     // Platform data (from Swift providers)
-    CalendarEventsReceived { events_json: String },
-    MediaStateReceived { state_json: String },
-    CameraListReceived { cameras_json: String },
-    VolumeChanged { level: f32 },
-    PermissionStatusChanged { calendar: bool, camera: bool, automation: bool },
+    CalendarEventsReceived {
+        events_json: String,
+    },
+    MediaStateReceived {
+        state_json: String,
+    },
+    CameraListReceived {
+        cameras_json: String,
+    },
+    VolumeChanged {
+        level: f32,
+    },
+    PermissionStatusChanged {
+        calendar: bool,
+        camera: bool,
+        automation: bool,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
