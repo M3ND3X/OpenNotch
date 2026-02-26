@@ -145,6 +145,7 @@ final class AppModel: ObservableObject {
     @Published var snapshot: UiSnapshot = defaultUiSnapshot()
     @Published var errorMessage: String?
     @Published var selectedSettingsSection: SettingsSection = .general
+    @Published var latestMediaStateJson: String = "{}"
     private var fallbackSettingsWindow: NSWindow?
 
     init() {
@@ -191,6 +192,10 @@ final class AppModel: ObservableObject {
         if let core = core {
             snapshot = core.snapshot()
         }
+    }
+
+    func cacheMediaStateJson(_ json: String) {
+        latestMediaStateJson = json
     }
 
     func openSettingsWindow(section: SettingsSection = .general) {

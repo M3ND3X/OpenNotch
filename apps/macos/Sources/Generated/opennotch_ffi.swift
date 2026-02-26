@@ -1467,15 +1467,17 @@ public struct TrayItemViewModel {
     public var displayName: String
     public var itemType: String
     public var sizeHint: String
+    public var sourceValue: String
     public var isSelected: Bool
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(id: String, displayName: String, itemType: String, sizeHint: String, isSelected: Bool) {
+    public init(id: String, displayName: String, itemType: String, sizeHint: String, sourceValue: String, isSelected: Bool) {
         self.id = id
         self.displayName = displayName
         self.itemType = itemType
         self.sizeHint = sizeHint
+        self.sourceValue = sourceValue
         self.isSelected = isSelected
     }
 }
@@ -1496,6 +1498,9 @@ extension TrayItemViewModel: Equatable, Hashable {
         if lhs.sizeHint != rhs.sizeHint {
             return false
         }
+        if lhs.sourceValue != rhs.sourceValue {
+            return false
+        }
         if lhs.isSelected != rhs.isSelected {
             return false
         }
@@ -1507,6 +1512,7 @@ extension TrayItemViewModel: Equatable, Hashable {
         hasher.combine(displayName)
         hasher.combine(itemType)
         hasher.combine(sizeHint)
+        hasher.combine(sourceValue)
         hasher.combine(isSelected)
     }
 }
@@ -1523,6 +1529,7 @@ public struct FfiConverterTypeTrayItemViewModel: FfiConverterRustBuffer {
                 displayName: FfiConverterString.read(from: &buf), 
                 itemType: FfiConverterString.read(from: &buf), 
                 sizeHint: FfiConverterString.read(from: &buf), 
+                sourceValue: FfiConverterString.read(from: &buf), 
                 isSelected: FfiConverterBool.read(from: &buf)
         )
     }
@@ -1532,6 +1539,7 @@ public struct FfiConverterTypeTrayItemViewModel: FfiConverterRustBuffer {
         FfiConverterString.write(value.displayName, into: &buf)
         FfiConverterString.write(value.itemType, into: &buf)
         FfiConverterString.write(value.sizeHint, into: &buf)
+        FfiConverterString.write(value.sourceValue, into: &buf)
         FfiConverterBool.write(value.isSelected, into: &buf)
     }
 }

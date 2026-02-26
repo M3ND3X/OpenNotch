@@ -102,6 +102,7 @@ pub struct TrayItemViewModel {
     pub display_name: String,
     pub item_type: String,
     pub size_hint: String,
+    pub source_value: String,
     pub is_selected: bool,
 }
 
@@ -112,6 +113,7 @@ impl From<opennotch_core::state::TrayItemViewModel> for TrayItemViewModel {
             display_name: t.display_name,
             item_type: t.item_type,
             size_hint: t.size_hint,
+            source_value: t.source_value,
             is_selected: t.is_selected,
         }
     }

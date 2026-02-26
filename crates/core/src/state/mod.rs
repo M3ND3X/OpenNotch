@@ -52,6 +52,7 @@ pub struct TrayItemViewModel {
     pub display_name: String,
     pub item_type: String,
     pub size_hint: String,
+    pub source_value: String,
     pub is_selected: bool,
 }
 

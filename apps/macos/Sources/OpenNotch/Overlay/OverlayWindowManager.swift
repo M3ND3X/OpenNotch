@@ -3,6 +3,8 @@
 
 import AppKit
 import SwiftUI
+import QuartzCore
+import Combine
 
 private let overlayDesignScale: CGFloat = 0.83
 private let overlayBaseExpandedWidth: CGFloat = 1180
@@ -28,21 +30,47 @@ final class OverlayInteractionState: ObservableObject {
 final class OverlayWindowManager: ObservableObject {
     private var panels: [String: NSPanel] = [:]
     private var appModel: AppModel?
-    private var activationMonitor: Any?
-    private var globalActivationMonitor: Any?
+    private var pointerMonitor: Any?
+    private var globalPointerMonitor: Any?
     private var clickMonitor: Any?
+    private var globalClickMonitor: Any?
     private var keyMonitor: Any?
+    private var snapshotObserver: AnyCancellable?
     private let interactionState = OverlayInteractionState()
     private var didRequestLeaveCollapse = false
+    private var dragEnterTime: CFTimeInterval?
+    private var dragExpandTimer: Timer?
+    private let dragAutoExpandDelay: CFTimeInterval = 0.10
+    private let dragPollingInterval: TimeInterval = 1.0 / 30.0
+    private var lastDragSignalTime: CFTimeInterval?
+    private let dragSignalGraceWindow: CFTimeInterval = 0.35
 
     func configure(appModel: AppModel) {
         self.appModel = appModel
         setupScreenObservers()
         createPanelsForCurrentScreens()
+        observeSnapshot()
         setupActivationZone()
         setupActivationClick()
         setupHotkey()
         setupTrayKeyboard()
+    }
+
+    private func observeSnapshot() {
+        guard let appModel else { return }
+        snapshotObserver = appModel.$snapshot
+            .receive(on: RunLoop.main)
+            .sink { [weak self] snapshot in
+                self?.updatePanelInteractivity(snapshot: snapshot)
+            }
+    }
+
+    private func updatePanelInteractivity(snapshot: UiSnapshot) {
+        let expanded = snapshot.expansionProgress > 0.01
+        for panel in panels.values {
+            panel.ignoresMouseEvents = !expanded
+            panel.acceptsMouseMovedEvents = expanded
+        }
     }
 
     private func setupScreenObservers() {
@@ -59,6 +87,7 @@ final class OverlayWindowManager: ObservableObject {
 
     private func screensDidChange() {
         interactionState.hoverPreviewActive = false
+        resetDragTracking()
         // Remove panels for screens that no longer exist
         for id in panels.keys where id != "screen-0" {
             panels[id]?.orderOut(nil)
@@ -98,9 +127,9 @@ final class OverlayWindowManager: ObservableObject {
         panel.backgroundColor = NSColor.clear
         // Use SwiftUI rounded shadow only; NSPanel shadow creates a square outline frame.
         panel.hasShadow = false
-        panel.ignoresMouseEvents = false
+        panel.ignoresMouseEvents = true
         panel.isMovableByWindowBackground = false
-        panel.acceptsMouseMovedEvents = true
+        panel.acceptsMouseMovedEvents = false
         panel.hidesOnDeactivate = false
 
         let hostingView = NSHostingView(rootView: OverlayHostView(appModel: appModel!, interactionState: interactionState))
@@ -118,6 +147,7 @@ final class OverlayWindowManager: ObservableObject {
 
         updatePanelPosition(panel, screen: screen)
         panel.makeKeyAndOrderFront(nil)
+        updatePanelInteractivity(snapshot: appModel!.snapshot)
 
         panels[screenId] = panel
     }
@@ -156,13 +186,13 @@ final class OverlayWindowManager: ObservableObject {
     }
 
     private func setupActivationZone() {
-        activationMonitor = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
-            self?.handleMouseMove(event)
+        pointerMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] event in
+            self?.handlePointerEvent(eventType: event.type)
             return event
         }
-        globalActivationMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
+        globalPointerMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] event in
             Task { @MainActor [weak self] in
-                self?.handleMouseMove(event)
+                self?.handlePointerEvent(eventType: event.type)
             }
         }
     }
@@ -181,15 +211,21 @@ final class OverlayWindowManager: ObservableObject {
         )
     }
 
-    private func handleMouseMove(_ event: NSEvent) {
+    private func handlePointerEvent(eventType: NSEvent.EventType? = nil) {
         guard let screen = NSScreen.main, let appModel = appModel else { return }
         let location = NSEvent.mouseLocation
         let topZone = activationZoneRect(screen: screen, settings: appModel.snapshot.settings)
         let isExpanded = appModel.snapshot.expansionProgress > 0.01
+        let now = CACurrentMediaTime()
+        let fileDragActive = isLikelyFileDragActive(now: now, eventType: eventType)
 
         if isExpanded {
             if interactionState.hoverPreviewActive {
                 interactionState.hoverPreviewActive = false
+            }
+            if fileDragActive {
+                didRequestLeaveCollapse = false
+                return
             }
             guard let panel = panels["screen-0"] else { return }
             if !panel.frame.contains(location) {
@@ -208,12 +244,108 @@ final class OverlayWindowManager: ObservableObject {
         if interactionState.hoverPreviewActive != shouldPreview {
             interactionState.hoverPreviewActive = shouldPreview
         }
+
+        handleDragAutoExpand(
+            inActivationZone: shouldPreview,
+            isExpanded: isExpanded,
+            appModel: appModel,
+            fileDragActive: fileDragActive
+        )
+    }
+
+    private func handleDragAutoExpand(
+        inActivationZone: Bool,
+        isExpanded: Bool,
+        appModel: AppModel,
+        fileDragActive: Bool
+    ) {
+        if !fileDragActive {
+            resetDragTracking()
+            return
+        }
+
+        if isExpanded {
+            stopDragTimer()
+            return
+        }
+
+        startDragTimerIfNeeded()
+
+        if inActivationZone {
+            let now = CACurrentMediaTime()
+            if dragEnterTime == nil { dragEnterTime = now }
+            guard
+                let entered = dragEnterTime,
+                now - entered >= dragAutoExpandDelay
+            else { return }
+
+            if appModel.snapshot.activeSurface != "Tray" {
+                appModel.dispatch(.toggleSurface)
+            }
+            interactionState.hoverPreviewActive = false
+            appModel.dispatch(.hoverEntered(screenId: "screen-0"))
+            stopDragTimer()
+        } else {
+            dragEnterTime = nil
+        }
+    }
+
+    private func isLikelyFileDragActive(now: CFTimeInterval, eventType: NSEvent.EventType?) -> Bool {
+        let dragPB = NSPasteboard(name: .drag)
+        guard let types = dragPB.types else { return false }
+        let hasDragPayload =
+            types.contains(.fileURL)
+            || types.contains(.URL)
+            || types.contains(NSPasteboard.PasteboardType("public.file-url"))
+        guard hasDragPayload else { return false }
+
+        if eventType == .leftMouseDragged {
+            lastDragSignalTime = now
+        }
+
+        if NSEvent.pressedMouseButtons != 0 {
+            return true
+        }
+
+        if let lastSignal = lastDragSignalTime, now - lastSignal <= dragSignalGraceWindow {
+            return true
+        }
+
+        return false
+    }
+
+    private func startDragTimerIfNeeded() {
+        guard dragExpandTimer == nil else { return }
+        let timer = Timer(timeInterval: dragPollingInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.handlePointerEvent(eventType: nil)
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        dragExpandTimer = timer
+    }
+
+    private func stopDragTimer() {
+        dragExpandTimer?.invalidate()
+        dragExpandTimer = nil
+    }
+
+    private func resetDragTracking() {
+        dragEnterTime = nil
+        lastDragSignalTime = nil
+        stopDragTimer()
     }
 
     private func setupActivationClick() {
         clickMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
             guard let self = self else { return event }
             return self.handleMouseDown(event)
+        }
+        globalClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.handleGlobalMouseDown()
+            }
         }
     }
 
@@ -229,6 +361,19 @@ final class OverlayWindowManager: ObservableObject {
         interactionState.hoverPreviewActive = false
         appModel.dispatch(.toggleOverlay)
         return nil
+    }
+
+    private func handleGlobalMouseDown() {
+        guard let screen = NSScreen.main, let appModel = appModel else { return }
+        let isExpanded = appModel.snapshot.expansionProgress > 0.01
+        guard !isExpanded else { return }
+
+        let location = NSEvent.mouseLocation
+        let topZone = activationZoneRect(screen: screen, settings: appModel.snapshot.settings)
+        guard topZone.contains(location) else { return }
+
+        interactionState.hoverPreviewActive = false
+        appModel.dispatch(.toggleOverlay)
     }
 
     private func setupHotkey() {
@@ -273,18 +418,24 @@ final class OverlayWindowManager: ObservableObject {
     }
 
     deinit {
-        if let monitor = activationMonitor {
+        if let monitor = pointerMonitor {
             NSEvent.removeMonitor(monitor)
         }
-        if let monitor = globalActivationMonitor {
+        if let monitor = globalPointerMonitor {
             NSEvent.removeMonitor(monitor)
         }
         if let monitor = clickMonitor {
             NSEvent.removeMonitor(monitor)
         }
+        if let monitor = globalClickMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
         if let monitor = keyMonitor {
             NSEvent.removeMonitor(monitor)
         }
+        snapshotObserver = nil
+        dragExpandTimer?.invalidate()
+        dragExpandTimer = nil
         panels.removeAll()
     }
 }

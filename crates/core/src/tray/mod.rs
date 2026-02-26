@@ -42,11 +42,22 @@ impl TrayItem {
     }
 
     pub fn to_view_model(&self, is_selected: bool) -> TrayItemViewModel {
+        let source_value = if let Some(ref p) = self.path {
+            p.clone()
+        } else if let Some(ref u) = self.url {
+            u.clone()
+        } else if let Some(ref t) = self.text {
+            t.clone()
+        } else {
+            String::new()
+        };
+
         TrayItemViewModel {
             id: self.id.clone(),
             display_name: self.display_name(),
             item_type: self.item_type.clone(),
             size_hint: self.size_hint.clone(),
+            source_value,
             is_selected,
         }
     }
@@ -70,32 +81,52 @@ impl TrayEngine {
 
     pub fn add_items(&mut self, payload: TrayAddPayload, max_items: u32) {
         self.max_items = max_items;
-        for path in payload.file_paths {
-            if self.items.len() >= self.max_items as usize {
-                break;
+        let mut touched_ids: HashSet<String> = HashSet::new();
+
+        for (idx, path) in payload.file_paths.into_iter().enumerate() {
+            if let Some(existing_id) = self
+                .items
+                .iter()
+                .find(|i| i.path.as_deref() == Some(path.as_str()))
+                .map(|i| i.id.clone())
+            {
+                touched_ids.insert(existing_id);
+                continue;
             }
+
+            self.evict_if_needed();
+
             let id = Uuid::new_v4().to_string();
-            let bookmark = payload
-                .bookmark_data
-                .get(self.items.len())
-                .cloned()
-                .unwrap_or_default();
+            let bookmark = payload.bookmark_data.get(idx).cloned().unwrap_or_default();
+            let (item_type, size_hint) = Self::path_metadata(&path);
             self.items.push(TrayItem {
                 id: id.clone(),
                 path: Some(path),
                 url: None,
                 text: None,
-                item_type: "file".to_string(),
-                size_hint: "".to_string(),
+                item_type,
+                size_hint,
                 bookmark_data: bookmark,
             });
+            touched_ids.insert(id);
         }
+
         for url in payload.urls {
-            if self.items.len() >= self.max_items as usize {
-                break;
+            if let Some(existing_id) = self
+                .items
+                .iter()
+                .find(|i| i.url.as_deref() == Some(url.as_str()))
+                .map(|i| i.id.clone())
+            {
+                touched_ids.insert(existing_id);
+                continue;
             }
+
+            self.evict_if_needed();
+
+            let id = Uuid::new_v4().to_string();
             self.items.push(TrayItem {
-                id: Uuid::new_v4().to_string(),
+                id: id.clone(),
                 path: None,
                 url: Some(url),
                 text: None,
@@ -103,13 +134,32 @@ impl TrayEngine {
                 size_hint: "".to_string(),
                 bookmark_data: vec![],
             });
+            touched_ids.insert(id);
         }
-        for text in payload.text_items {
-            if self.items.len() >= self.max_items as usize {
-                break;
+
+        for raw_text in payload.text_items {
+            let text = raw_text.trim().to_string();
+            if text.is_empty() {
+                continue;
             }
+
+            if text.len() < 280 {
+                if let Some(existing_id) = self
+                    .items
+                    .iter()
+                    .find(|i| i.text.as_deref() == Some(text.as_str()))
+                    .map(|i| i.id.clone())
+                {
+                    touched_ids.insert(existing_id);
+                    continue;
+                }
+            }
+
+            self.evict_if_needed();
+
+            let id = Uuid::new_v4().to_string();
             self.items.push(TrayItem {
-                id: Uuid::new_v4().to_string(),
+                id: id.clone(),
                 path: None,
                 url: None,
                 text: Some(text),
@@ -117,6 +167,11 @@ impl TrayEngine {
                 size_hint: "".to_string(),
                 bookmark_data: vec![],
             });
+            touched_ids.insert(id);
+        }
+
+        if !touched_ids.is_empty() {
+            self.selected_ids = touched_ids;
         }
     }
 
@@ -174,5 +229,48 @@ impl TrayEngine {
 
     pub fn get_paths_for_ids(&self, ids: &[String]) -> Vec<String> {
         ids.iter().filter_map(|id| self.get_item_path(id)).collect()
+    }
+
+    fn evict_if_needed(&mut self) {
+        if self.max_items == 0 {
+            self.items.clear();
+            self.selected_ids.clear();
+            return;
+        }
+
+        while self.items.len() >= self.max_items as usize {
+            if !self.items.is_empty() {
+                let removed = self.items.remove(0);
+                self.selected_ids.remove(&removed.id);
+            } else {
+                break;
+            }
+        }
+    }
+
+    fn path_metadata(path: &str) -> (String, String) {
+        let metadata = std::fs::metadata(path);
+        match metadata {
+            Ok(meta) if meta.is_dir() => ("folder".to_string(), "Folder".to_string()),
+            Ok(meta) => ("file".to_string(), Self::format_size(meta.len())),
+            Err(_) => ("file".to_string(), "".to_string()),
+        }
+    }
+
+    fn format_size(size_bytes: u64) -> String {
+        const KB: f64 = 1024.0;
+        const MB: f64 = KB * 1024.0;
+        const GB: f64 = MB * 1024.0;
+
+        let size = size_bytes as f64;
+        if size < KB {
+            format!("{} B", size_bytes)
+        } else if size < MB {
+            format!("{:.1} KB", size / KB)
+        } else if size < GB {
+            format!("{:.1} MB", size / MB)
+        } else {
+            format!("{:.1} GB", size / GB)
+        }
     }
 }

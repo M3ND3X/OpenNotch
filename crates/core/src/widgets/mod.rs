@@ -205,19 +205,28 @@ impl WidgetProtocol for MediaWidget {
         "Media"
     }
     fn compact_view_model(&self) -> WidgetViewModel {
-        let title = self
+        let payload = self
             .state_json
             .read()
             .ok()
-            .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+            .map(|s| s.clone())
+            .unwrap_or_else(|| "{}".to_string());
+        let parsed = serde_json::from_str::<serde_json::Value>(&payload).ok();
+        let title = parsed
+            .as_ref()
             .and_then(|v| v.get("title").and_then(|t| t.as_str()).map(String::from))
             .unwrap_or_else(|| "—".to_string());
+        let subtitle = parsed
+            .as_ref()
+            .and_then(|v| v.get("artist").and_then(|t| t.as_str()).map(String::from))
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or_else(|| "Now Playing".to_string());
         WidgetViewModel {
             id: "media".to_string(),
             name: "Media".to_string(),
-            compact_title: "Now Playing".to_string(),
+            compact_title: subtitle,
             compact_content: title,
-            expanded_content: "Music controls".to_string(),
+            expanded_content: payload,
             is_expanded: false,
         }
     }

@@ -15,10 +15,38 @@ private let mirrorCircleBg = Color.white.opacity(0.12)
 private let widgetCardBg = Color.white.opacity(0.09)
 private let widgetTitleGray = Color.white.opacity(0.62)
 
+private struct MediaNowPlayingState: Decodable {
+    var title: String
+    var artist: String
+    var album: String
+    var app: String
+    var isPlaying: Bool
+    var positionSeconds: Double
+    var durationSeconds: Double
+    var artworkPath: String?
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        title = (try? c.decode(String.self, forKey: .title)) ?? ""
+        artist = (try? c.decode(String.self, forKey: .artist)) ?? ""
+        album = (try? c.decode(String.self, forKey: .album)) ?? ""
+        app = (try? c.decode(String.self, forKey: .app)) ?? "Now Playing"
+        isPlaying = (try? c.decode(Bool.self, forKey: .isPlaying)) ?? false
+        positionSeconds = (try? c.decode(Double.self, forKey: .positionSeconds)) ?? 0
+        durationSeconds = (try? c.decode(Double.self, forKey: .durationSeconds)) ?? 0
+        artworkPath = try? c.decodeIfPresent(String.self, forKey: .artworkPath)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case title, artist, album, app, isPlaying, positionSeconds, durationSeconds, artworkPath
+    }
+}
+
 struct NookView: View {
     @ObservedObject var appModel: AppModel
     @StateObject private var mirrorCamera = MirrorCameraController()
     @StateObject private var notesModel = NookNotesModel()
+    private let primarySectionWidth = ns(332)
 
     private var nook: NookViewModel { appModel.snapshot.nook }
     private var widgets: [WidgetViewModel] {
@@ -35,19 +63,38 @@ struct NookView: View {
     }
 
     private var supplementalWidgets: [WidgetViewModel] {
-        return widgets.filter {
+        let allowed = widgets.filter {
             ($0.id == "notes" || $0.id == "calendar") && enabledWidgetIds.contains($0.id)
         }
+        var ordered: [WidgetViewModel] = []
+        if let notes = allowed.first(where: { $0.id == "notes" }) {
+            ordered.append(notes)
+        }
+        if let calendar = allowed.first(where: { $0.id == "calendar" }) {
+            ordered.append(calendar)
+        }
+        return ordered
     }
 
-    // Match the reference empty state whenever media is idle.
-    private var shouldShowReferenceEmptyState: Bool {
-        guard !widgets.isEmpty else { return true }
-        guard let media = widgets.first(where: { $0.id == "media" || $0.compactTitle.lowercased().contains("now playing") }) else {
-            return true
+    private var mediaWidget: WidgetViewModel? {
+        return widgets.first(where: { $0.id == "media" })
+    }
+
+    private var mediaState: MediaNowPlayingState? {
+        if
+            let mediaWidget,
+            let parsed = parseMediaState(from: mediaWidget.expandedContent)
+        {
+            return parsed
         }
-        let content = media.compactContent.trimmingCharacters(in: .whitespacesAndNewlines)
-        return content.isEmpty || content == "—" || content == "-"
+        return parseMediaState(from: appModel.latestMediaStateJson)
+    }
+
+    private func parseMediaState(from json: String) -> MediaNowPlayingState? {
+        guard let data = json.data(using: .utf8) else { return nil }
+        guard let parsed = try? JSONDecoder().decode(MediaNowPlayingState.self, from: data) else { return nil }
+        let title = parsed.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return title.isEmpty || title == "—" ? nil : parsed
     }
 
     private func openSettings() {
@@ -73,14 +120,20 @@ struct NookView: View {
         mirrorCamera.toggle()
     }
 
+    private func mediaPlayPause() {
+        MediaProvider.send(.playPause)
+    }
+
+    private func mediaNext() {
+        MediaProvider.send(.next)
+    }
+
+    private func mediaPrevious() {
+        MediaProvider.send(.previous)
+    }
+
     var body: some View {
-        Group {
-            if shouldShowReferenceEmptyState {
-                emptyState
-            } else {
-                widgetStrip
-            }
-        }
+        referenceStrip
         .padding(.horizontal, ns(20))
         .padding(.vertical, ns(12))
         .frame(maxWidth: .infinity)
@@ -88,48 +141,43 @@ struct NookView: View {
             insertion: .opacity.combined(with: .scale(scale: 0.95)),
             removal: .opacity.combined(with: .scale(scale: 0.95))
         ))
+        .onAppear {
+            MediaProvider.requestRefresh(appModel: appModel)
+        }
         .onDisappear {
             mirrorCamera.stop()
         }
     }
 
-    private var widgetStrip: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: ns(14)) {
-                ForEach(Array(widgets.prefix(6)), id: \.id) { widget in
-                    WidgetCard(widget: widget, appModel: appModel)
-                }
-                MirrorButton(
-                    style: .compact,
-                    isLivePreview: mirrorCamera.isRunning,
-                    previewSession: mirrorCamera.session,
-                    action: toggleMirrorPreview
-                )
-            }
-            .padding(.horizontal, ns(4))
-        }
-        .frame(height: ns(112))
-    }
-
-    /// Reference empty state: media prompt + shortcuts + mirror circle.
-    private var emptyState: some View {
+    private var referenceStrip: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 0) {
-                VStack(spacing: ns(8)) {
-                    Text("No app seems to be running")
-                        .font(.system(size: ns(14), weight: .semibold))
-                        .foregroundStyle(contentSecondary)
-                    Text("Wanna open one?")
-                        .font(.system(size: ns(17), weight: .bold))
-                        .foregroundStyle(contentPrimary)
-                    HStack(spacing: ns(14)) {
-                        AppSuggestionButton(kind: .music, action: openMusicApp)
-                        AppSuggestionButton(kind: .youtube, action: openYouTube)
+                if let mediaState {
+                    MediaHeroSection(
+                        state: mediaState,
+                        onPrevious: mediaPrevious,
+                        onPlayPause: mediaPlayPause,
+                        onNext: mediaNext
+                    )
+                    .frame(width: primarySectionWidth)
+                    .frame(minHeight: ns(108))
+                } else {
+                    VStack(spacing: ns(8)) {
+                        Text("No app seems to be running")
+                            .font(.system(size: ns(14), weight: .semibold))
+                            .foregroundStyle(contentSecondary)
+                        Text("Wanna open one?")
+                            .font(.system(size: ns(17), weight: .bold))
+                            .foregroundStyle(contentPrimary)
+                        HStack(spacing: ns(14)) {
+                            AppSuggestionButton(kind: .music, action: openMusicApp)
+                            AppSuggestionButton(kind: .youtube, action: openYouTube)
+                        }
+                        .padding(.top, ns(8))
                     }
-                    .padding(.top, ns(8))
+                    .frame(width: primarySectionWidth)
+                    .frame(minHeight: ns(108))
                 }
-                .frame(width: ns(280))
-                .frame(minHeight: ns(108))
 
                 dividerOrSpacer
 
@@ -811,6 +859,119 @@ struct WidgetCard: View {
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
         .animation(.easeInOut(duration: 0.2), value: isHovered)
+    }
+}
+
+private struct MediaHeroSection: View {
+    let state: MediaNowPlayingState
+    let onPrevious: () -> Void
+    let onPlayPause: () -> Void
+    let onNext: () -> Void
+
+    private var secondaryText: String {
+        let artist = state.artist.trimmingCharacters(in: .whitespacesAndNewlines)
+        let album = state.album.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !artist.isEmpty && !album.isEmpty {
+            return "\(artist) • \(album)"
+        }
+        if !artist.isEmpty { return artist }
+        if !album.isEmpty { return album }
+        return state.app
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: ns(13)) {
+            artwork
+                .frame(width: ns(104), height: ns(104))
+                .clipShape(RoundedRectangle(cornerRadius: ns(24), style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: ns(24), style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: ns(0.8))
+                )
+
+            VStack(alignment: .leading, spacing: ns(4)) {
+                Text(state.title)
+                    .font(.system(size: ns(22), weight: .bold))
+                    .foregroundStyle(contentPrimary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text(secondaryText)
+                    .font(.system(size: ns(18), weight: .semibold))
+                    .foregroundStyle(contentSecondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+
+                Spacer(minLength: ns(4))
+
+                HStack(spacing: ns(14)) {
+                    mediaControlButton(icon: "backward.fill", action: onPrevious)
+                    mediaControlButton(icon: state.isPlaying ? "pause.fill" : "play.fill", action: onPlayPause)
+                    mediaControlButton(icon: "forward.fill", action: onNext)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .padding(.top, ns(2))
+        }
+        .padding(.horizontal, ns(3))
+        .frame(width: ns(332), height: ns(108), alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var artwork: some View {
+        if let artworkPath = state.artworkPath, !artworkPath.isEmpty, let image = NSImage(contentsOfFile: artworkPath) {
+            Image(nsImage: image)
+                .resizable()
+                .scaledToFill()
+        } else if let appURL = appBundleURL {
+            let icon = NSWorkspace.shared.icon(forFile: appURL.path)
+            Image(nsImage: icon)
+                .resizable()
+                .scaledToFit()
+                .padding(ns(4))
+                .background(Color.white.opacity(0.06))
+        } else {
+            RoundedRectangle(cornerRadius: ns(14), style: .continuous)
+                .fill(Color.white.opacity(0.12))
+                .overlay(
+                    Image(systemName: "music.note")
+                        .font(.system(size: ns(26), weight: .semibold))
+                        .foregroundStyle(contentSecondary)
+                )
+        }
+    }
+
+    @ViewBuilder
+    private func mediaControlButton(icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: ns(20), weight: .bold))
+                .foregroundStyle(contentPrimary)
+                .frame(width: ns(28), height: ns(28))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var appBundleURL: URL? {
+        switch state.app.lowercased() {
+        case "music":
+            return NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Music")
+        case "spotify":
+            return NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.spotify.client")
+        case "safari":
+            return NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Safari")
+        case "google chrome":
+            return NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.google.Chrome")
+        case "brave browser":
+            return NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.brave.Browser")
+        case "microsoft edge":
+            return NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.edgemac")
+        case "arc":
+            return NSWorkspace.shared.urlForApplication(withBundleIdentifier: "company.thebrowser.Browser")
+        default:
+            return nil
+        }
     }
 }
 
